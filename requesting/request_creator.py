@@ -6,22 +6,31 @@ except ImportError:
 
 import requests
 
-from lib.formatter import info
+from lib.formatter import (
+    info,
+    debug
+)
 
 
 class RequestMaker(object):
 
-    response_retval = []
+    good_response_retval = []
 
     def __init__(self, url, targets, **kwargs):
         self.url = url
         self.targets = targets
         self.proxy = kwargs.get("proxy", {})
         self.headers = kwargs.get("headers", {})
-        self.good_status_codes = (200, 301, 403)
+        self.good_status_codes = (
+            200, 301, 403, 203, 202, 300,
+            302, 305, 401, 402, 405, 407,
+            411, 423, 499
+        )
         self.threads = kwargs.get("threads", 10)
         self.queue = queue.Queue()
         self.quiet = kwargs.get("quiet", False)
+        self.save_all = kwargs.get("save_all", False)
+        self.verbose = kwargs.get("verbose", False)
 
     def threader(self):
         while True:
@@ -30,20 +39,29 @@ class RequestMaker(object):
             self.queue.task_done()
 
     def threaded_get_response(self, target):
+        if self.verbose:
+            debug("current target: {}".format(target))
         try:
             req = requests.get(target, proxies=self.proxy)
             if req.status_code in self.good_status_codes:
                 directory_retval = target.split("/")[-1]
                 status_code = req.status_code
                 print("/{} ({})".format(directory_retval, status_code))
-                self.response_retval.append((target, req.status_code))
+                self.good_response_retval.append((target, req.status_code))
             else:
                 if not self.quiet:
                     directory_retval = target.split("/")[-1]
                     status_code = req.status_code
                     print("/{} ({})".format(directory_retval, status_code))
-                self.response_retval.append((target, req.status_code))
-        except Exception:
+                if self.save_all:
+                    self.good_response_retval.append((target, req.status_code))
+        except Exception as e:
+            if self.verbose:
+                debug(
+                    "URL: {} threw exception with error message: {}, class: {}".format(
+                        target, str(e), e.__class__
+                    )
+                )
             pass
         except KeyboardInterrupt:
             self.queue.all_tasks_done()
@@ -61,7 +79,7 @@ class RequestMaker(object):
             self.queue.join()
         except (KeyboardInterrupt, SystemExit):
             self.queue.all_tasks_done()
-        return self.response_retval
+        return self.good_response_retval
 
 
 

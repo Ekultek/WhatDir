@@ -20,7 +20,7 @@ URL_VALIDATION = re.compile(
 )
 
 # version number
-VERSION = "0.1"
+VERSION = "0.1.1"
 
 # version type, either dev or stable
 VERSION_TYPE = "dev" if VERSION.count(".") > 1 else "stable"
@@ -62,9 +62,10 @@ def process_file(filename, chunk=1024):
             piece = data.read(chunk)
             if piece:
                 for item in piece.splitlines():
+                    item = item.strip()
                     if not str(item).startswith("/"):
-                        item = "/{}".format(item.strip())
-                    retval.add(item.strip())
+                        item = "/{}".format(item)
+                    retval.add(item)
             else:
                 break
     return retval
@@ -102,3 +103,18 @@ def create_request_headers(proxy=None, headers=None, user_agent=False):
         header_retval["User-Agent"] = DEFAULT_USER_AGENT
     return proxy_retval, header_retval
 
+
+def save_successful_connection(successes, file_path):
+    """
+    save all successful connections into a file
+    """
+    import csv
+
+    if not file_path.endswith(".csv"):
+        file_path = file_path + ".csv"
+    with open(file_path, "a+") as csv_file:
+        data_writer = csv.writer(csv_file, delimiter=",")
+        data_writer.writerow(["directory_path", "status_code"])
+        for path, success in successes:
+            data_writer.writerow([path, success])
+    return file_path
