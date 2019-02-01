@@ -69,7 +69,7 @@ class WhatDirParser(argparse.ArgumentParser):
         misc_args = parser.add_argument_group("misc arguments")
         misc_args.add_argument(
             "-q", "--quiet", action="store_true", default=False,
-            help="display only successful connections within status code range 200, 301, 403, (*default=False)",
+            help="display only successful connections within status code range, (*default=False)",
             dest="runInQuiet"
         )
         misc_args.add_argument(
