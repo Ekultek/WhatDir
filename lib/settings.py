@@ -1,10 +1,14 @@
 import re
+import os
 import sys
+import json
 import platform
 try:
     from urlparse import urlparse
 except Exception:
     from urllib.parse import urlparse
+
+import lib.formatter
 
 
 # this is a regex to validate a URL. It was taken from Django's URL validation technique
@@ -19,8 +23,17 @@ URL_VALIDATION = re.compile(
     r'(?:/?|[/?]\S+)$', re.IGNORECASE
 )
 
+# home path
+HOME = "{}/whatdir_out".format(os.getcwd())
+
+# database information
+DATABASE_FILE_PATH = "{}/whatdir.sqlite".format(HOME)
+
+# where the CSV files are stored
+CSV_FILE_PATH = "{}/csv_files".format(HOME)
+
 # version number
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 
 # version type, either dev or stable
 VERSION_TYPE = "dev" if VERSION.count(".") > 1 else "stable"
@@ -47,7 +60,10 @@ def heuristics(url):
     if not URL_VALIDATION.match(url):
         return False, None
     parsed_url = urlparse(url)
-    usable_url = "{}://{}".format(parsed_url.scheme, parsed_url.netloc)
+    try:
+        usable_url = "{}://{}{}".format(parsed_url.scheme, parsed_url.netloc, parsed_url.path)
+    except:
+        usable_url = "{}://{}".format(parsed_url.scheme, parsed_url.netloc)
     return True, usable_url
 
 
@@ -75,7 +91,6 @@ def grab_random_user_agent():
     """
     grab a random user agent out of a file
     """
-    import os
     import random
 
     path = "{}/etc/user_agents.txt".format(os.getcwd())
@@ -104,17 +119,43 @@ def create_request_headers(proxy=None, headers=None, user_agent=False):
     return proxy_retval, header_retval
 
 
-def save_successful_connection(successes, file_path):
+def save_successful_connection(successes, url):
     """
     save all successful connections into a file
     """
     import csv
 
-    if not file_path.endswith(".csv"):
-        file_path = file_path + ".csv"
+    amount_in_dir = 0
+    parsed_url = urlparse(url)
+    if not os.path.exists(CSV_FILE_PATH):
+        os.makedirs(CSV_FILE_PATH)
+    filename = "{}.csv".format(parsed_url.netloc)
+    file_list = os.listdir(CSV_FILE_PATH)
+    for item in file_list:
+        if filename in item:
+            amount_in_dir += 1
+    if amount_in_dir != 0:
+        filename = "{}_{}".format(filename, amount_in_dir)
+    file_path = "{}/{}".format(CSV_FILE_PATH, filename)
     with open(file_path, "a+") as csv_file:
         data_writer = csv.writer(csv_file, delimiter=",")
         data_writer.writerow(["directory_path", "status_code"])
         for path, success in successes:
             data_writer.writerow([path, success])
     return file_path
+
+
+def display_database(data):
+    """
+    display the information already inside the database
+    """
+    if len(data) == 0:
+        lib.formatter.warn("no data found in database")
+        return
+    for database_info in data:
+        _, netloc, results = database_info
+        print("NETLOC: {}".format(netloc))
+        results = json.loads(results)
+        for item in results:
+            print("/{},{}".format(item[0].split("/")[-1], item[1]))
+        print("\n")
