@@ -65,6 +65,10 @@ class WhatDirParser(argparse.ArgumentParser):
             "-a", "--agent", default=False, dest="userAgentRandomize", action="store_true",
             help="pass this flag to grab a random User-Agent and use it, (*default=CUSTOM)"
         )
+        request_args.add_argument(
+            "-T", "--timeout", default=2, dest="setTimeout", metavar="TIMEOUT", type=int,
+            help="set the request timeout times. (*default=2)"
+        )
 
         misc_args = parser.add_argument_group("misc arguments")
         misc_args.add_argument(
@@ -73,9 +77,8 @@ class WhatDirParser(argparse.ArgumentParser):
             dest="runInQuiet"
         )
         misc_args.add_argument(
-            "-o", "--output", metavar="OUTPUT-FILE-PATH", default=None, dest="outputFile",
-            help="pass a file name to save all successful connections into a CSV file "
-                 "(will append .csv if not present), (*default=None)"
+            "-o", "--output", default=False, action="store_true", dest="outputFile",
+            help="pass this flag to save the information into a CSV file under url.csv (*default=False)"
         )
         misc_args.add_argument(
             "--save-all", default=False, action="store_true", dest="saveAllAttempts",
@@ -84,5 +87,9 @@ class WhatDirParser(argparse.ArgumentParser):
         misc_args.add_argument(
             "--verbose", action="store_true", default=False, dest="runVerbose",
             help="run in verbose mode (more output), (*default=False)"
+        )
+        misc_args.add_argument(
+            "-vC", "--view-cache", default=False, dest="viewDbCache", action="store_true",
+            help="pass this to view the cached database information"
         )
         return parser.parse_args()
