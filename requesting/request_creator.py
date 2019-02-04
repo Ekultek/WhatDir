@@ -31,8 +31,12 @@ class RequestMaker(object):
         self.quiet = kwargs.get("quiet", False)
         self.save_all = kwargs.get("save_all", False)
         self.verbose = kwargs.get("verbose", False)
+        self.timeout = kwargs.get("timeout", 2)
 
     def threader(self):
+        """
+        threader where all the fun threading stuff happens
+        """
         while True:
             target = self.queue.get()
             self.threaded_get_response(target)
@@ -42,7 +46,7 @@ class RequestMaker(object):
         if self.verbose:
             debug("current target: {}".format(target))
         try:
-            req = requests.get(target, proxies=self.proxy)
+            req = requests.get(target, proxies=self.proxy, timeout=self.timeout, headers=self.headers)
             if req.status_code in self.good_status_codes:
                 directory_retval = target.split("/")[-1]
                 status_code = req.status_code
