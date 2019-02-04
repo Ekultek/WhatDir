@@ -2,11 +2,17 @@ import time
 
 from lib.cmd import WhatDirParser
 from requesting.request_creator import RequestMaker
+from lib.database import (
+    initialize,
+    fetch_stored_data,
+    insert_website_info
+)
 from lib.settings import (
     process_file,
     heuristics,
     create_request_headers,
     save_successful_connection,
+    display_database,
     BANNER
 )
 from lib.formatter import (
@@ -20,9 +26,14 @@ from lib.formatter import (
 
 def main():
     try:
+        cursor = initialize()
         full_program_start_time = time.time()
         print(BANNER)
         opts = WhatDirParser().optparse()
+        if opts.viewDbCache:
+            cache = fetch_stored_data(cursor)
+            display_database(cache)
+            exit(1)
         if opts.urlToUse is not None:
             if opts.wordListToUse is not None:
                 try:
@@ -65,13 +76,19 @@ def main():
                     debug("proxy configuration: {}, header configuration: {}, starting attacks".format(proxy, headers))
                 results = RequestMaker(
                     usable_url, target_data, threads=opts.amountOfThreads, quiet=opts.runInQuiet,
-                    proxy=proxy, headers=headers, save_all=opts.saveAllAttempts, verbose=opts.runVerbose
+                    proxy=proxy, headers=headers, save_all=opts.saveAllAttempts, verbose=opts.runVerbose,
+                    timeout=opts.setTimeout
                 ).threaded_response_helper()
                 info("a total of {} possible result(s) found".format(len(results)))
-                if opts.outputFile is not None:
+                if len(results) != 0:
+                    was_inserted = insert_website_info(cursor, usable_url, results)
+                    if was_inserted:
+                        info("results saved to database")
+                if opts.outputFile:
                     if len(results) != 0:
-                        info("saving connections to {}".format(opts.outputFile))
-                        save_successful_connection(results, opts.outputFile)
+                        info("saving connections to file")
+                        file_path = save_successful_connection(results, usable_url)
+                        info("connections saved to CSV file under {}".format(file_path))
                     else:
                         warn("no results found, skipping file creation", minor=True)
             else:
